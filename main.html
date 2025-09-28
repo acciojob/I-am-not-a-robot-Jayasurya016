@@ -1,18 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I'm not a robot</title>
-    <link rel="stylesheet" href="styles.css" />
-  </head>
-  <body>
-    <main>
-      <!-- solution start -->
-      
-      <!-- solution end -->
-    </main>
-    <script src="./script.js"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I'm Not a Robot Verification</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .tile {
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 4px solid transparent;
+        }
+        .tile:hover {
+            opacity: 0.9;
+        }
+        .selected {
+            border-color: #3b82f6; /* Blue border for selected tiles */
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Main Container Card -->
+    <div class="w-full max-w-2xl bg-white shadow-2xl rounded-xl p-8 space-y-6 text-center">
+        
+        <h1 class="text-3xl font-bold text-gray-800 border-b pb-4">
+            Robot Verification System
+        </h1>
+
+        <!-- Main Message Area -->
+        <div>
+            <h3 id="h" class="text-xl font-semibold text-gray-600 mb-2">
+                Please click on the identical tiles to verify that you are not a robot.
+            </h3>
+            <!-- Verification Result Message -->
+            <p id="para" class="text-lg font-medium text-green-600 hidden"></p>
+        </div>
+
+        <!-- Image Tiles Container -->
+        <div id="image-container" class="grid grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50">
+            <!-- Image tiles will be dynamically generated/populated here -->
+        </div>
+
+        <!-- Buttons Container -->
+        <div class="flex justify-center space-x-4 pt-4">
+            <button 
+                id="reset"
+                class="hidden py-2 px-6 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-gray-500 hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150"
+            >
+                Reset
+            </button>
+            <button 
+                id="verify"
+                class="hidden py-2 px-6 border border-transparent rounded-lg shadow-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150"
+            >
+                Verify
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const imageContainer = document.getElementById('image-container');
+            const mainMessage = document.getElementById('h');
+            const resultMessage = document.getElementById('para');
+            const resetButton = document.getElementById('reset');
+            const verifyButton = document.getElementById('verify');
+
+            // Define 5 unique image placeholders (using inline SVG for lightweight, distinct shapes/icons)
+            const imageAssets = [
+                'Circle', // ID 1
+                'Square', // ID 2
+                'Triangle', // ID 3
+                'Star', // ID 4
+                'Hexagon' // ID 5
+            ];
+
+            let clickedTiles = [];
+            let imageElements = [];
+
+            // Fisher-Yates (Knuth) Shuffle algorithm
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
+            function getSvg(shape) {
+                const size = 64;
+                switch (shape) {
+                    case 'Circle': return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="45" fill="#EF4444"/></svg>`; // Red
+                    case 'Square': return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="10" width="80" height="80" fill="#3B82F6"/></svg>`; // Blue
+                    case 'Triangle': return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50,10 90,90 10,90" fill="#10B981"/></svg>`; // Green
+                    case 'Star': return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M50 10 L61 39 L92 39 L68 59 L79 88 L50 68 L21 88 L32 59 L8 39 L39 39 Z" fill="#F59E0B"/></svg>`; // Yellow
+                    case 'Hexagon': return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><polygon points="50 10, 90 35, 90 65, 50 90, 10 65, 10 35" fill="#8B5CF6"/></svg>`; // Purple
+                    default: return '';
+                }
+            }
+
+            function initializeGame() {
+                // Reset state
+                clickedTiles = [];
+                imageContainer.innerHTML = '';
+                resultMessage.textContent = '';
+                resultMessage.classList.add('hidden');
+                resetButton.classList.add('hidden');
+                verifyButton.classList.add('hidden');
+                mainMessage.textContent = "Please click on the identical tiles to verify that you are not a robot.";
+                mainMessage.classList.remove('text-red-500', 'text-green-500');
+                mainMessage.classList.add('text-gray-600');
+
+                // 1. Create 5 unique assets + 1 duplicate
+                let tiles = [...imageAssets]; // 5 unique
+                const duplicateIndex = Math.floor(Math.random() * imageAssets.length);
+                const duplicateAsset = imageAssets[duplicateIndex];
+                tiles.push(duplicateAsset); // 6 tiles total, one is a duplicate
+
+                // 2. Shuffle the tiles array
+                shuffleArray(tiles);
+
+                // 3. Render the tiles
+                imageElements = [];
+                tiles.forEach((assetName, index) => {
+                    const button = document.createElement('button');
+                    button.classList.add('tile', 'p-4', 'bg-white', 'rounded-lg', 'shadow-md', 'flex', 'items-center', 'justify-center', 'aspect-square');
+                    button.setAttribute('data-tile-id', assetName);
+                    button.setAttribute('data-index', index); // Track index to prevent double-clicking same tile
+                    button.innerHTML = getSvg(assetName);
+                    
+                    button.addEventListener('click', handleTileClick);
+                    imageContainer.appendChild(button);
+                    imageElements.push(button);
+                });
+            }
+
+            function handleTileClick(event) {
+                const tile = event.currentTarget;
+
+                // Game is over, disallow clicks
+                if (verifyButton.classList.contains('hidden') === false && resultMessage.textContent) {
+                    return;
+                }
+
+                // Do nothing if tile is already selected
+                if (tile.classList.contains('selected')) {
+                    // This allows clicking a selected tile to deselect it if needed, but for this specific
+                    // task, we'll assume a click is a selection.
+                    return;
+                }
+
+                // If two tiles are already selected, ignore the click (State 3 rule)
+                if (clickedTiles.length >= 2) {
+                    return;
+                }
+
+                // Select the tile (State 2)
+                tile.classList.add('selected');
+                clickedTiles.push(tile);
+                
+                resetButton.classList.remove('hidden'); // Show Reset button (State 2)
+
+                // If two tiles are now selected (State 3)
+                if (clickedTiles.length === 2) {
+                    verifyButton.classList.remove('hidden'); // Show Verify button
+                    
+                    // Disable further clicks until verified or reset
+                    imageElements.forEach(img => img.removeEventListener('click', handleTileClick));
+                }
+            }
+
+            function handleReset() {
+                // Clear selections and return to State 1
+                clickedTiles.forEach(tile => tile.classList.remove('selected'));
+                clickedTiles = [];
+                resetButton.classList.add('hidden');
+                verifyButton.classList.add('hidden');
+                resultMessage.textContent = '';
+                resultMessage.classList.add('hidden');
+                mainMessage.textContent = "Please click on the identical tiles to verify that you are not a robot.";
+                mainMessage.classList.remove('text-red-500', 'text-green-500');
+                mainMessage.classList.add('text-gray-600');
+
+                // Re-enable clicks
+                imageElements.forEach(img => img.addEventListener('click', handleTileClick));
+            }
+
+            function handleVerify() {
+                if (clickedTiles.length !== 2) return;
+
+                const [tile1, tile2] = clickedTiles;
+                const id1 = tile1.getAttribute('data-tile-id');
+                const id2 = tile2.getAttribute('data-tile-id');
+
+                verifyButton.classList.add('hidden'); // Hide Verify button (State 4)
+
+                resultMessage.classList.remove('hidden');
+
+                if (id1 === id2) {
+                    // Success
+                    resultMessage.textContent = "You are a human. Congratulations!";
+                    resultMessage.classList.remove('text-red-500');
+                    resultMessage.classList.add('text-green-600');
+                    mainMessage.textContent = "Verification Successful!";
+                    mainMessage.classList.remove('text-gray-600');
+                    mainMessage.classList.add('text-green-500');
+                } else {
+                    // Failure
+                    resultMessage.textContent = "We can't verify you as a human. You selected the non-identical tiles.";
+                    resultMessage.classList.remove('text-green-600');
+                    resultMessage.classList.add('text-red-500');
+                    mainMessage.textContent = "Verification Failed!";
+                    mainMessage.classList.remove('text-gray-600');
+                    mainMessage.classList.add('text-red-500');
+                }
+            }
+
+            // Attach listeners to buttons
+            resetButton.addEventListener('click', handleReset);
+            verifyButton.addEventListener('click', handleVerify);
+
+            // Initialize the game on page load
+            initializeGame();
+        });
+    </script>
+
+</body>
 </html>
