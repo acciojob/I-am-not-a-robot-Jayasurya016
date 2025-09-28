@@ -134,6 +134,10 @@
                 tiles.forEach((assetName, index) => {
                     const button = document.createElement('button');
                     button.classList.add('tile', 'p-4', 'bg-white', 'rounded-lg', 'shadow-md', 'flex', 'items-center', 'justify-center', 'aspect-square');
+                    
+                    // FIX: Add index-based class (e.g., img1, img2) to satisfy Cypress selectors
+                    button.classList.add(`img${index + 1}`);
+
                     button.setAttribute('data-tile-id', assetName);
                     button.setAttribute('data-index', index); // Track index to prevent double-clicking same tile
                     button.innerHTML = getSvg(assetName);
